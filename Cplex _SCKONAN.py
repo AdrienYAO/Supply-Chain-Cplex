@@ -29,7 +29,7 @@ periods = range(1, 3)          # 2 périodes
 cells = range(1, 3)            # 2 cellules (à adapter si besoin)
 machineN = range(1, 8)         # nombre d’unités/machines (idem machines ici)
 subcontractors = range(1, 5)   # 4 sous-traitants (exemple)
-operations = range(1, 4) # 12 opérations
+operations = range(1, 4) # 3 opérations
 
 # Générer demande
 demande = generer_demande(data["params"], periods)
