@@ -15,3 +15,4 @@ datay.json associé au programme principal Cplex_SCKONAN.py, et
 data.json utilisé pour un programme de test SupplyChainYAO.py permettant de valider que le modèle fonctionne effectivement avec CPLEX.
 
 Les fichiers Cplex_SCKONAN.py et supply_chain_model.py contiennent l’implémentation complète du modèle de planification de la chaîne logistique.
+Cependant, nous avons rencontré une limitation importante liée à l’édition communautaire de CPLEX : celle-ci restreint la taille du problème à 1000 variables et 1000 contraintes. Or, notre modèle dépasse largement ces limites, ce qui empêche son exécution complète dans cette version gratuite de CPLEX.
