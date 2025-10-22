@@ -39,8 +39,7 @@ C:\Program Files\IBM\ILOG\CPLEX_StudioXXX\python
 Redémarre ton terminal pour appliquer.
 
 3️⃣ Installation de docplex
-Option A : Avec pip
-pip install docplex
+Option A : Avec pip install docplex
 
 Option B : Avec conda (si tu utilises Anaconda)
 conda install -c conda-forge docplex
