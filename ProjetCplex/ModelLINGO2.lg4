@@ -1,0 +1,182 @@
+
+MODEL:
+SETS:
+
+Product/1..4/;       !Produits;!p;
+Machine /1..3/;       !Type de Machines;!m;
+Period  /1..2/;       !Péride;!t;
+Cell   /1..2/;        !Cellule de production c;
+Operation/1..3/;      !Opérations o;
+Subcontract/1..4/;   !Sous-traitants l;
+Cells  /1..2/;        !Cellule de production c_prime;
+Cellsc   /1..2/;        !Cellule de production c_seconde;
+MachineA /1..3/;       !Type de Machines;!m_prime;
+Machinesc /1..3/;       !Type de Machines;!m_seconde;
+
+
+
+!p(Product); !t(Period); !c(Cell); !c_prime(Cells); !c_seconde(Cellsc); !m(Machine); !m_prime(Machines);!m_seconde(Machinesc); !l(Subcontract); !o(Operation);
+!Déclaration des paramètres;
+
+Demand(Product, Period): Dem;                     !Demande pour chaque produit par période;
+MachineCapacity(Machine):MC;                      !Capacité par machine et par période;
+CellCapacity(Cell,period):;                       !Capacité de production par cellule;
+SetupCost(Machine):SetCost;                       !Coût de la mise en place par produit/machine;
+OperationCost(Product,Machine,Operation):OP;      !Coût opération par produit/machine/opération;
+InterCellCost(Product):InterCost;                 !Coût inter-cellulaire;
+IntraCellCost(Product):IntrCost;                  !Coût intra-cellulaire;
+MachineCost(Machine):Mcost, INT;                  !Coût d'achat des machines;
+HoldingCost(Product):HoldCost;                    !Coût de commande en souffrance;
+SubcontractCost(Subcontract):subCost,SubCapacity; !Coût de sous-traitance, capacité;
+LotSize(Product):Tlot;                            !Taille du lot pour chaque produit ;
+SaleCost(Machine):SalCost;                        !Coût de vente pour chaque machine ;   
+ComponentMatrix(Product, Machine):MCIM;           !Matrice d'incidence des composants de machines ;
+ProductsDeferred(Product, Period):Pdef;           !Produits reportés par période ;
+MachineOfCell(Cell,Machine):;                     !les machines contenues dans les cellules;
+MachineOfPeriod(Machine,Period):;                 !les périodes de planificatons des machines;           
+PeriodOfCell(Period,Cell):;                       !les périodes de la formation des cellules;
+PeriodOfMachine(Period,Machine):;                 !les périodes de planificatons des machines;
+Subcontractdo1(Subcontract,Period):;
+
+
+! Variables de décision ;
+ProductsDf(Product, Period): B;                   !Quantité de produits reportés par période ;
+Subcontractdo(Product,Subcontract,Period):Y;      !Quantité sous-traitée ;
+MachineAdRe(Machine,Cell,Period):NAJ,NRE;         !Machine ajoutée/retirée;
+MachineNumber(Machine, Cell,Period):MN;           !Quantité de machines pendant une periode;
+Link(Product, Machine,MachineA,Cell,Cells,Period): X,Z; !Quantité produite par produit/machine/période/operation/Cellule ;
+Linkk(Product, Machinesc,Machine,Cellsc,Cell,Period):; 
+
+
+
+
+ENDSETS
+
+DATA:
+
+@FILE('DataFinal.dat');
+
+ENDDATA
+
+! Fonction objectif ;
+
+! Fonction objectif ;
+
+[OBJ]MIN = Q1 +Q2 + Q3+ Q4 +Q5 +Q6 +Q7;
+
+! Q1 :Coût de préparation ;
+
+Q1 =  @SUM(Product(p): @SUM(Machine(m): @SUM(MachineA(m_prime): @SUM(Cell(c): @SUM(Cells(c_prime): @SUM(Period(t): (SetCost(m) / Tlot(p)) * X(p, m, m_prime,c,c_prime, t)))))));
+
+ ! Q2 :Coût opérationnel ;
+
+Q2= @SUM(Product(p): @SUM(Machine(m): @SUM(MachineA(m_prime): @SUM(Cell(c): @SUM(Cells(c_prime): @SUM(Period(t): @SUM(Operation(o): OP(p,o,m)*MCIM(p,m)*X(p, m, m_prime, c,c_prime, t))))))));
+
+ ! Q3 :Coût net acquisition machine ;
+
+Q3 = @SUM(Period(t): @SUM(Cell(c): @SUM(Machine(m): (MCost(m)*NAJ(m,c,t) - SalCost(m)*NRE(m,c,t)))));
+
+ ! Q4 :Sous-traitance ;
+
+Q4= @SUM(Period(t): @SUM(Subcontract(l): @SUM(Product(p):SubCost(l)*Y(p,l,t))));
+
+ ! Q5 :Retards ;
+
+Q5= @SUM(Period(t): @SUM(Product(p): HoldCost(p)*B(p,t)));
+
+ ! Q6 :Intracellulaire ;
+
+Q6= @SUM(Product(p): @SUM(Machine(m): @SUM(MachineA(m_prime): @SUM(Cell(c): @SUM(Cells(c_prime):@SUM(Period(t): IntrCost(p)*X(p, m, m_prime, c,c_prime, t)))))));
+
+!Q7 : Intercellulaire ;
+
+Q7= @SUM(Product(p): @SUM(Machine(m): @SUM(MachineA(m_prime): @SUM(Cell(c): @SUM(Cells(c_prime): @SUM(Period(t): InterCost(p)*X(p, m, m_prime, c,c_prime, t)))))));
+
+
+!Contraintes ;
+
+!1. Demande ;
+@FOR(Product(p):@FOR(Period(t):
+  @SUM(Cell(c): @SUM(Cells(c_prime): @SUM(Machine(m): @SUM(MachineA(m_prime) : X(p,m,m_prime,c,c_prime,t)))))
+  + @SUM(Subcontract(l): Y(p,l,t))
+  + B(p,t)
+  >= Dem(p,t) + B(p,1)
+));
+
+!2. Compatibilité ;
+@FOR(Product(p):@FOR(Machine(m): @FOR(MachineA(m_prime): @FOR(Cell(c): @FOR(Cells(c_prime): @FOR(Period(t):
+  X(p,m,m_prime,c,c_prime,t)*(1 - MCIM(p,m_prime)) <= 0
+))))));
+
+!3. Capacité machine ;
+@FOR(Machine(m):@FOR(Cell(c):@FOR(Period(t):
+  @SUM(Product(p): @SUM(Cells(c_prime): @SUM(MachineA(m_prime): X(p,m,m_prime,c,c_prime,t)))) <= MC(m)
+)));
+
+!4. Taille de lot ;
+@FOR(Product(p):@FOR(Machine(m): @FOR(MachineA(m_prime): @FOR(Cell(c): @FOR(Cells(c_prime): @FOR(Period(t):
+  X(p,m,m_prime,c,c_prime,t) <= Tlot(p)
+))))));
+! 5. Liaison binaire ;
+@FOR(Product(p):@FOR(Machine(m): @FOR(MachineA(m_prime): @FOR(Cell(c): @FOR(Cells(c_prime): @FOR(Period(t):
+  X(p,m,m_prime,c,c_prime,t) <= Z(p,m,m_prime,c,c_prime,t)*BigM
+))))));
+
+! 6. Capacité de sous-traitance ;
+@FOR(Subcontract(l):@FOR(Period(t): @SUM(Product(p): Y(p,l,t)) <= SubCapacity(l)));
+
+!7. Limite des retards ;
+@FOR(Product(p):@FOR(Period(t): B(p,t) <= Pdef(p,t)));
+
+
+!8. Parc machine initial ;
+!@FOR(Machine(m):@FOR(Cell(c): MN(m,c,1) = INT(m)));
+
+
+! 9. Évolution du parc machine ;
+@FOR(Machine(m): @FOR(Cell(c): @FOR(Period(t):
+  NAJ(m,c,1) - NRE(m,c,1) + INT(m) = MN(m,c,1))));
+
+@FOR(Machine(m): @FOR(Cell(c): @FOR(Period(t) |t#GT#1:
+  NAJ(m,c,t) - NRE(m,c,t) + MN(m,c,t-1) = MN(m,c,t))));
+
+! 10. Capacité cellulaire ;
+@FOR(Cell(c): @FOR(Period(t): LP <= @SUM(Machine(m): MN(m,c,t))));
+@FOR(Cell(c): @FOR(Period(t): @SUM(Machine(m): MN(m,c,t)) <= CL));
+! 11. Utilisation machine ;
+@FOR(Machine(m): @FOR(Period(t):
+  @SUM(Cell(c): @SUM(Cells(c_prime): @SUM(MachineA(m_prime): @SUM(Product(p): X(p,m,m_prime,c,c_prime,t)))))
+  <= MC(m)* @SUM(Cell(c): MN(m,c,t))
+));
+
+! 12. Équilibre flux ;
+@FOR(Machine(m): @FOR(Cell(c): @FOR(Period(t):
+  @SUM(Cells(c_prime): @SUM(Machine(m_prime): @SUM(Product(p): X(p,m,m_prime,c,c_prime,t))))
+  <=
+  @SUM(Cellsc(c_seconde): @SUM(Machinesc(m_seconde): @SUM(Product(p): X(p,m_seconde,m,c_seconde,c,t))))
+)));
+
+! 13. Domaines ;
+@FOR(Product(p): @FOR(Machine(m): @FOR(MachineA(m_prime): @FOR(Cell(c): @FOR(Cells(c_prime): @FOR(Period(t):
+  @BIN(Z(p,m,m_prime,c,c_prime,t))
+))))));
+@FOR(Product(p): @FOR(Machine(m): @FOR(MachineA(m_prime): @FOR(Cell(c): @FOR(Cells(c_prime): @FOR(Period(t):
+  @GIN(X(p,m,m_prime,c,c_prime,t))
+))))));
+
+@FOR(Product(p): @FOR(Machinesc(m_seconde): @FOR(Machine(m): @FOR(Cellsc(c_seconde): @FOR(Cell(c): @FOR(Period(t):
+  @GIN(X(p,m_seconde,m,c_seconde,c,t))
+))))));
+
+@FOR(Machine(m): @FOR(Cell(c): @FOR(Period(t):
+  @GIN(NAJ(m,c,t)))));
+
+@FOR(Machine(m): @FOR(Cell(c): @FOR(Period(t):
+  @GIN(MN(m,c,t)))));
+
+@FOR(Product(p): @FOR(Subcontract(l): @FOR(Period(t):
+  @GIN(Y(p,l,t))
+)));
+@FOR(Product(p): @FOR(Period(t):
+  @GIN(B(p,t))
+));END
